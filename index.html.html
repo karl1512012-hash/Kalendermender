@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Kalender - Tagzuweisung</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Login / General containers */
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 60px 40px;
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .login-header { margin-bottom: 50px; }
+        .login-header h1 {
+            color: #333;
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .login-header p { color: #999; font-size: 14px; font-weight: 500; }
+
+        .login-form { display:flex; flex-direction:column; gap:20px; }
+        .form-group { display:flex; flex-direction:column; align-items:flex-start; width:100%; }
+        .form-group label { color:#333; font-size:14px; font-weight:600; margin-bottom:8px; }
+        .form-group input {
+            width:100%;
+            padding:14px 16px;
+            border:2px solid #e0e0e0;
+            border-radius:10px;
+            font-size:16px;
+            transition: border-color .3s, box-shadow .3s;
+        }
+        .form-group input:focus { outline:none; border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,0.1); }
+        .form-group input::placeholder { color:#ccc; }
+
+        .login-button {
+            width:100%;
+            padding:14px;
+            background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            color:white; border:none; border-radius:10px;
+            font-size:16px; font-weight:600; cursor:pointer;
+            transition: transform .2s, box-shadow .3s; margin-top:10px;
+        }
+        .login-button:hover { transform:translateY(-2px); box-shadow:0 10px 30px rgba(102,126,234,0.4); }
+        .login-button:active { transform:translateY(0); }
+
+        .error { color:#ff6b6b; font-size:13px; margin-top:-5px; display:none; }
+        .error.show { display:block; }
+
+        /* Center main app and containers */
+        #mainApp { display:none; width:100%; }
+        /* when shown, ensure centered */
+        #mainApp.centered { display:flex; justify-content:center; }
+
+        .login-container,
+        .container,
+        .app-wrapper {
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .app-wrapper {
+            max-width: 900px;
+            width:100%;
+            display:flex;
+            flex-direction:column;
+            gap:20px;
+            align-items: center;
+        }
+
+        .container {
+            background:white;
+            border-radius:20px;
+            box-shadow:0 20px 60px rgba(0,0,0,0.3);
+            padding:30px;
+            width:100%;
+            max-width:700px;
+        }
+
+        .header {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:20px;
+            gap:10px;
+        }
+        .header button {
+            background:#667eea; color:white; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-size:16px;
+        }
+        .header button:hover { background:#764ba2; }
+        .header h1 { font-size:20px; color:#333; text-align:center; flex:1; margin:0; }
+
+        .today-info {
+            background:#f0f4ff; padding:12px; border-radius:10px; margin-bottom:16px; text-align:center;
+            border-left:4px solid #667eea;
+        }
+        .today-info p { color:#333; font-size:14px; margin:4px 0; }
+        .today-info .person-name { font-size:18px; font-weight:700; color:#667eea; margin-top:6px; }
+
+        /* Calendar */
+        .calendar-wrapper { border:2px solid #ddd; border-radius:10px; overflow:hidden; }
+        .weekdays { display:grid; grid-template-columns:repeat(7,1fr); background:#f9f9f9; border-bottom:2px solid #ddd; gap:0; }
+        .weekday { text-align:center; font-weight:700; color:#333; padding:8px 4px; font-size:12px; border-right:1px solid #ddd; }
+        .weekday:last-child { border-right:none; }
+        .calendar { display:grid; grid-template-columns:repeat(7,1fr); gap:0; }
+        .day {
+            display:flex; 
+            flex-direction:column; 
+            justify-content:center; 
+            align-items:center;
+            border:1px solid #ddd; 
+            cursor:pointer; 
+            background:white; 
+            transition:background .25s;
+            font-size:11px; 
+            text-align:center; 
+            padding:4px;
+            min-height:70px;
+            aspect-ratio:auto;
+        }
+        .day:hover { background:#e8e8e8; }
+        .day.today { background:#ff6b6b; color:white; font-weight:700; }
+        .day.today .day-person { color:white; }
+        .day.other-month { display:none; }
+        .day-number { font-weight:700; font-size:13px; margin-bottom:2px; }
+        .day-person { font-size:10px; font-weight:500; color:#667eea; }
+
+        /* Timer */
+        .timer-container { text-align:center; }
+        .timer-title { font-size:22px; color:#333; margin-bottom:12px; font-weight:600; }
+        .timer-status {
+            font-size:14px; color:#666; margin-bottom:12px; padding:10px; border-radius:8px; background:#f9f9f9;
+            cursor:pointer; transition:all .25s; display:inline-block;
+        }
+        .timer-status.used { background:#e8f5e9; color:#2e7d32; font-weight:700; }
+        .timer-status.unused { background:#fff3e0; color:#e65100; font-weight:700; }
+        .timer-status:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+
+        .timer-display {
+            font-size:48px; font-weight:700; color:#667eea; font-family:'Courier New',monospace;
+            margin-bottom:20px; background:#f0f4ff; padding:22px; border-radius:12px; letter-spacing:6px;
+        }
+
+        .timer-buttons { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+        .timer-btn { padding:12px 26px; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; }
+        .timer-btn-start { background:#4caf50; color:white; }
+        .timer-btn-start:hover:not(:disabled) { background:#45a049; transform:translateY(-2px); }
+        .timer-btn-pause { background:#ff9800; color:white; }
+        .timer-btn-pause:hover:not(:disabled) { background:#e68900; transform:translateY(-2px); }
+        .timer-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+        /* Responsive Anpassungen für Handy */
+        @media (max-width: 600px) {
+            body { padding:10px; }
+            .login-container, .container { padding:18px; max-width:100%; width:100%; border-radius:12px; }
+            .login-header h1 { font-size:28px; }
+            .login-header p { font-size:13px; }
+            .form-group label { font-size:13px; }
+            .form-group input, .login-button { font-size:15px; padding:12px; }
+            .timer-title { font-size:18px; }
+            .timer-status { font-size:13px; padding:8px; }
+            .timer-display { font-size:clamp(24px,10vw,36px); padding:16px; letter-spacing:3px; }
+            .timer-buttons { gap:8px; }
+            .timer-btn { padding:10px 14px; font-size:13px; }
+            .weekday { padding:6px 2px; font-size:11px; }
+            .day { min-height:60px; padding:2px; font-size:10px; }
+            .day-number { font-size:12px; }
+            .day-person { font-size:9px; }
+            .header h1 { font-size:18px; }
+            .header button { padding:8px 10px; font-size:14px; }
+            .app-wrapper { gap:12px; }
+            .container { padding:15px; }
+            img, video { max-width:100%; height:auto; }
+        }
+
+        /* Extra small devices */
+        @media (max-width: 400px) {
+            .day { min-height:55px; padding:2px; font-size:9px; }
+            .day-number { font-size:11px; }
+            .weekday { padding:4px 2px; font-size:10px; }
+            .header button { padding:6px 8px; font-size:12px; }
+            .login-container { padding:40px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loginScreen" class="login-container">
+        <div class="login-header">
+            <h1>Kalender</h1>
+            <p>Geben Sie Ihr Passwort ein, um fortzufahren</p>
+        </div>
+
+        <form class="login-form" onsubmit="event.preventDefault(); checkPassword();">
+            <div class="form-group">
+                <label for="passwordInput">Passwort</label>
+                <input type="password" id="passwordInput" placeholder="Ihr Passwort eingeben..." autocomplete="off" />
+                <div id="errorMsg" class="error"></div>
+            </div>
+
+            <button type="submit" class="login-button">Anmelden</button>
+        </form>
+    </div>
+
+    <div id="mainApp">
+        <div class="app-wrapper">
+            <!-- Calendar Container -->
+            <div class="container">
+                <div class="today-info" id="todayInfo"></div>
+
+                <div class="header">
+                    <button onclick="previousMonth()">←</button>
+                    <h1 id="monthYear"></h1>
+                    <button onclick="nextMonth()">→</button>
+                </div>
+
+                <div class="calendar-wrapper">
+                    <div class="weekdays">
+                        <div class="weekday">Mo</div>
+                        <div class="weekday">Di</div>
+                        <div class="weekday">Mi</div>
+                        <div class="weekday">Do</div>
+                        <div class="weekday">Fr</div>
+                        <div class="weekday">Sa</div>
+                        <div class="weekday">So</div>
+                    </div>
+
+                    <div class="calendar" id="calendar"></div>
+                </div>
+            </div>
+
+            <!-- Timer Container -->
+            <div class="container timer-container">
+                <div class="timer-title">⏱️ 30 Minuten Timer</div>
+
+                <div id="timerStatus" class="timer-status unused" onclick="toggleTimerStatus()">
+                    ⏳ 30 Minuten noch nicht genutzt (Klick zum markieren)
+                </div>
+
+                <div class="timer-display" id="timerDisplay">30:00</div>
+
+                <div class="timer-buttons">
+                    <button class="timer-btn timer-btn-start" id="startBtn" onclick="startTimer()">Start</button>
+                    <button class="timer-btn timer-btn-pause" id="pauseBtn" onclick="pauseTimer()" disabled>Pause</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CORRECT_PASSWORD = 'Tage1234';
+
+        function checkPassword() {
+            const passwordInput = document.getElementById('passwordInput').value;
+            const errorMsg = document.getElementById('errorMsg');
+
+            if (passwordInput === CORRECT_PASSWORD) {
+                document.getElementById('loginScreen').style.display = 'none';
+                const main = document.getElementById('mainApp');
+                main.classList.add('centered');
+                main.style.display = 'flex';
+                initializeCalendar();
+                initializeTimer();
+            } else {
+                errorMsg.textContent = 'Falsches Passwort!';
+                errorMsg.classList.add('show');
+                document.getElementById('passwordInput').value = '';
+            }
+        }
+
+        // Reference date for alternating names
+        const referenceDate = new Date(2026, 1, 8);
+        let currentDate = new Date();
+        let selectedDays = JSON.parse(localStorage.getItem('selectedDays')) || [];
+
+        function getPersonForDate(date) {
+            const diffTime = Math.floor((date - referenceDate) / (1000 * 60 * 60 * 24));
+            return diffTime % 2 === 0 ? 'Karl' : 'Artur';
+        }
+
+        function initializeCalendar() {
+            updateTodayInfo();
+            renderCalendar();
+        }
+
+        function updateTodayInfo() {
+            const today = new Date();
+            const person = getPersonForDate(today);
+            const todayEl = document.getElementById('todayInfo');
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const dateStr = today.toLocaleDateString('de-DE', options);
+
+            todayEl.innerHTML = `<p>Heute: ${dateStr}</p><div class="person-name">${person}s Tag</div>`;
+        }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const options = { month: 'long', year: 'numeric' };
+            document.getElementById('monthYear').textContent = new Date(year, month).toLocaleDateString('de-DE', options);
+
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+
+            let html = '';
+            const today = new Date();
+
+            for (let i = 0; i < startingDayOfWeek; i++) html += `<div class="day other-month"></div>`;
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const isToday = date.toDateString() === today.toDateString();
+                const person = getPersonForDate(date);
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                let classes = 'day';
+                if (isToday) classes += ' today';
+                html += `<div class="${classes}" onclick="toggleDay('${dateStr}')"><div class="day-number">${day}</div><div class="day-person">${person}</div></div>`;
+            }
+
+            const totalCells = startingDayOfWeek + daysInMonth;
+            const remainingCells = 42 - totalCells;
+            for (let i = 0; i < remainingCells; i++) html += `<div class="day other-month"></div>`;
+
+            document.getElementById('calendar').innerHTML = html;
+        }
+
+        function toggleDay(dateStr) {
+            const index = selectedDays.indexOf(dateStr);
+            if (index > -1) selectedDays.splice(index, 1);
+            else selectedDays.push(dateStr);
+            localStorage.setItem('selectedDays', JSON.stringify(selectedDays));
+            saveAllData();
+            renderCalendar();
+        }
+
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+        }
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        }
+
+        // Timer functionality (fixed 30 minutes)
+        let timerInterval = null;
+        let totalSeconds = 30 * 60;
+        let isRunning = false;
+
+        function getTodayDateString() {
+            const t = new Date();
+            return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+        }
+
+        function initializeTimer() {
+            totalSeconds = 30 * 60;
+            updateTimerStatus();
+            updateTimerDisplay();
+        }
+
+        function updateTimerStatus() {
+            const todayDate = getTodayDateString();
+            const used = localStorage.getItem(`timerUsed_${todayDate}`);
+            const statusEl = document.getElementById('timerStatus');
+            if (used === 'true') {
+                statusEl.textContent = '✅ 30 Minuten heute bereits genutzt (Klick zum zurücksetzen)';
+                statusEl.className = 'timer-status used';
+            } else {
+                statusEl.textContent = '⏳ 30 Minuten noch nicht genutzt (Klick zum markieren)';
+                statusEl.className = 'timer-status unused';
+            }
+        }
+
+        function toggleTimerStatus() {
+            const todayDate = getTodayDateString();
+            const key = `timerUsed_${todayDate}`;
+            if (localStorage.getItem(key) === 'true') localStorage.removeItem(key);
+            else localStorage.setItem(key, 'true');
+            saveAllData();
+            updateTimerStatus();
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            document.getElementById('timerDisplay').textContent = `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+        }
+
+        function startTimer() {
+            if (isRunning) return;
+            isRunning = true;
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+
+            timerInterval = setInterval(() => {
+                if (totalSeconds > 0) {
+                    totalSeconds--;
+                    updateTimerDisplay();
+                } else {
+                    clearInterval(timerInterval);
+                    isRunning = false;
+                    alert('Timer abgelaufen!');
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('pauseBtn').disabled = true;
+                    totalSeconds = 30 * 60;
+                    updateTimerDisplay();
+                    saveAllData();
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            if (!isRunning) return;
+            isRunning = false;
+            clearInterval(timerInterval);
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('startBtn').textContent = 'Fortsetzen';
+            saveAllData();
+        }
+
+        // Speichern aller Daten
+        function saveAllData() {
+            const allData = {
+                selectedDays: selectedDays,
+                timerUsedDays: {},
+                lastSaved: new Date().toISOString()
+            };
+
+            // Sammle alle Timer-Einträge
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('timerUsed_')) {
+                    allData.timerUsedDays[key] = localStorage.getItem(key);
+                }
+            }
+
+            localStorage.setItem('appData', JSON.stringify(allData));
+            console.log('Daten gespeichert:', allData);
+        }
+
+        // Lade alle Daten beim Start
+        function loadAllData() {
+            const savedData = localStorage.getItem('appData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                selectedDays = data.selectedDays || [];
+                
+                // Stelle Timer-Einträge wieder her
+                Object.keys(data.timerUsedDays).forEach(key => {
+                    localStorage.setItem(key, data.timerUsedDays[key]);
+                });
+                
+                console.log('Daten geladen:', data);
+            }
+        }
+
+        // allow Enter to submit password
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && document.getElementById('loginScreen').style.display !== 'none') {
+                e.preventDefault();
+                checkPassword();
+            }
+        });
+
+        // Lade Daten beim Laden der Seite
+        window.addEventListener('load', function() {
+            loadAllData();
+        });
+
+        // Speichere Daten wenn Seite geschlossen wird
+        window.addEventListener('beforeunload', function() {
+            saveAllData();
+        });
+    </script>
+</body>
+</html>
